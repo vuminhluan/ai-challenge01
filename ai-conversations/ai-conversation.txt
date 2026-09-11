@@ -1,0 +1,1778 @@
+ ▐▛███▛█   Claude Code v2.1.268
+▝▜██████▀  Opus 5 · Claude Max
+  ▝▝ ▝▝    ~/Documents/MyProjects/papaya-test
+
+  Fable 5.1 writes better code and reports progress on long tasks. Switch anytime with /model.
+
+❯ Sử dụng /superpowers:brainstorming  để làm rõ yêu cầu trong                   
+  AI_Engineering_Challenges/AI_Challenge_01.md                                  
+
+⏺ Skill(superpowers:brainstorming)
+  ⎿  Successfully loaded skill
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+⏺ Tôi thấy đây là một project mới nên sẽ đi đủ quy trình brainstorming: làm rõ
+  yêu cầu (bảng so sánh 3 gói bảo hiểm, làm nổi bật giá trị tốt nhất, badge
+  "Recommended", responsive trên mobile), sau đó hỏi lần lượt các điểm còn thiếu
+  như tech stack, công thức "Recommended" và nơi deploy trước khi đề xuất hướng
+  thiết kế.
+
+⏺ User answered Claude's questions:
+  ⎿  · Bạn muốn dùng tech stack nào cho trang so sánh này? → HTML/CSS/JS thuần
+
+⏺ Tôi sẽ dùng HTML/CSS/JS thuần, tách file theo vai trò
+  (data/logic/render/style). Tiếp theo tôi sẽ xử lý cách hiển thị định dạng số,
+  vì JSON chỉ chứa số trơn chưa có đơn vị tiền tệ.
+
+⏺ User answered Claude's questions:
+  ⎿  · Các giá trị tiền (premium, limit) nên hiển thị với đơn vị nào? → USD ($) 
+     (Recommended)
+
+⏺ Tôi sẽ dùng USD làm hằng số cấu hình. Sau khi thử ba công thức
+  "value-for-money" khác nhau để chọn gói Recommended, tất cả đều cho ra kết quả
+  Gold (vì Gold có hạn mức gấp 10 lần Bronze nhưng phí chỉ gấp ~4.7 lần), nên
+  tôi sẽ chọn Gold làm gói khuyến nghị.
+
+⏺ User answered Claude's questions:
+  ⎿  · Chọn cách tính 'Recommended' nào? → Giải thích cho tôi các công thức, các
+     thuật ngữ và cách tính toán trên trước khi tôi quyết định. Trong quá trình
+     giải thích lấy ví dụ để tôi có thể hiểu
+
+⏺ Tôi sẽ giải thích thuật ngữ trước, rồi đến từng công thức, có tính toán mẫu
+  với dữ liệu thật.
+
+  ---
+
+  1. Thuật ngữ trong dữ liệu
+
+  Trường: monthly_premium
+  Nghĩa: Phí bảo hiểm hàng tháng, số tiền bạn đóng cho công ty bảo hiểm
+  Ví dụ (Bronze): $150/tháng → phí năm = 150 × 12 = $1,800
+  ────────────────────────────────────────
+  Trường: annual_limit
+  Nghĩa: Hạn mức năm, tổng số tiền tối đa công ty trả cho bạn trong 1 năm, tính
+  gộp mọi quyền lợi
+  Ví dụ (Bronze): $500,000. Chi trả hết mức này trong năm thì phần vượt bạn tự
+  trả
+  ────────────────────────────────────────
+  Trường: outpatient
+  Nghĩa: Ngoại trú, đi khám rồi về trong ngày, không nằm viện
+  Ví dụ (Bronze): limit_per_visit: 3000 là mỗi lần khám được trả tối đa $3,000.
+  visits_per_year: 30 là tối đa 30 lần/năm
+  ────────────────────────────────────────
+  Trường: inpatient
+  Nghĩa: Nội trú, nhập viện, nằm qua đêm
+  Ví dụ (Bronze): limit_per_day: 10000 là tối đa $10,000/ngày. days_per_year: 60
+
+  là tối đa 60 ngày/năm
+  ────────────────────────────────────────
+  Trường: dental
+  Nghĩa: Nha khoa
+  Ví dụ (Bronze): Bronze là null, tức không bao gồm. Silver: limit_per_year: 
+  30000 là tối đa $30,000/năm
+  ────────────────────────────────────────
+  Trường: maternity
+  Nghĩa: Thai sản
+  Ví dụ (Bronze): Gold: limit_per_pregnancy: 200000 là tối đa $200,000 cho mỗi
+  lần mang thai
+  ────────────────────────────────────────
+  Trường: copay_percentage
+  Nghĩa: Đồng chi trả, phần trăm hóa đơn bạn tự trả dù có bảo hiểm
+  Ví dụ (Bronze): Bronze 20%: hóa đơn $1,000 thì bạn trả $200, bảo hiểm trả $800
+  ────────────────────────────────────────
+  Trường: waiting_period_days
+  Nghĩa: Thời gian chờ, số ngày sau khi mua mà quyền lợi chưa có hiệu lực
+  Ví dụ (Bronze): Bronze 30 ngày: mua hôm nay, ngày thứ 10 bị ốm thì chưa được 
+  chi trả
+  ────────────────────────────────────────
+  Trường: -1
+  Nghĩa: Không giới hạn
+  Ví dụ (Bronze): Gold visits_per_year: -1 là khám bao nhiêu lần cũng được
+
+  Value-for-money (đáng đồng tiền) là câu hỏi: với mỗi $1 tôi đóng, tôi nhận lại
+  được bao nhiêu? Đề bài chỉ nói gói Recommended phải dựa trên tỷ lệ này. Đề
+  không nói "nhận lại" đo bằng gì, nên mới có nhiều công thức.
+
+  ---
+
+  2. Công thức B: hạn mức ÷ phí năm (đơn giản nhất)
+
+  ▎ Mỗi $1 phí, công ty cam kết chi trả tối đa bao nhiêu $?
+  ▎ B = annual_limit ÷ (monthly_premium × 12)
+
+  ┌────────┬─────────────┬─────────┬───────────────────────────┐
+  │        │ Hạn mức năm │ Phí năm │          Kết quả          │
+  ├────────┼─────────────┼─────────┼───────────────────────────┤
+  │ Bronze │ 500,000     │ 1,800   │ 500,000 ÷ 1,800 = 277.8   │
+  ├────────┼─────────────┼─────────┼───────────────────────────┤
+  │ Silver │ 1,500,000   │ 4,200   │ 1,500,000 ÷ 4,200 = 357.1 │
+  ├────────┼─────────────┼─────────┼───────────────────────────┤
+  │ Gold   │ 5,000,000   │ 8,400   │ 5,000,000 ÷ 8,400 = 595.2 │
+  └────────┴─────────────┴─────────┴───────────────────────────┘
+
+  Cách đọc: với Gold, mỗi $1 phí mua được tối đa ~$595 hạn mức.
+
+  Điểm yếu: bỏ qua copay. Bronze bắt bạn tự trả 20% mọi hóa đơn, nhưng công thức
+  này coi như không có.
+
+  ---
+
+  3. Công thức A: hạn mức thực nhận ÷ phí năm (B có tính thêm copay)
+
+  ▎ A = annual_limit × (1 − copay%) ÷ (monthly_premium × 12)
+
+  Ý tưởng: vì có copay, bảo hiểm chỉ trả (100% − copay) mỗi hóa đơn. Nên hạn mức
+  thực tế bạn hưởng bị giảm tương ứng.
+
+  ┌────────┬───────────┬──────────────────┬────────────┬──────────┬────────┐
+  │        │  Hạn mức  │ × phần bảo hiểm  │  = Thực    │  ÷ Phí   │  Kết   │
+  │        │           │       trả        │    nhận    │   năm    │  quả   │
+  ├────────┼───────────┼──────────────────┼────────────┼──────────┼────────┤
+  │ Bronze │ 500,000   │ × 0.80 (copay    │ 400,000    │ ÷ 1,800  │ 222.2  │
+  │        │           │ 20%)             │            │          │        │
+  ├────────┼───────────┼──────────────────┼────────────┼──────────┼────────┤
+  │ Silver │ 1,500,000 │ × 0.90 (copay    │ 1,350,000  │ ÷ 4,200  │ 321.4  │
+  │        │           │ 10%)             │            │          │        │
+  ├────────┼───────────┼──────────────────┼────────────┼──────────┼────────┤
+  │ Gold   │ 5,000,000 │ × 1.00 (copay    │ 5,000,000  │ ÷ 8,400  │ 595.2  │
+  │        │           │ 0%)              │            │          │        │
+  └────────┴───────────┴──────────────────┴────────────┴──────────┴────────┘
+
+  Ví dụ đời thường: bạn nằm viện, hóa đơn $10,000.
+  - Bronze: bảo hiểm trả $8,000, bạn trả $2,000.
+  - Silver: bảo hiểm trả $9,000, bạn trả $1,000.
+  - Gold: bảo hiểm trả hết $10,000.
+
+  Công thức A phản ánh đúng khác biệt này. B thì không.
+
+  Điểm yếu chung của A và B: cả hai đo mức trần, tức kịch bản bạn dùng hết hạn
+  mức năm. Thực tế ít ai dùng hết $500,000. Người khỏe mạnh chỉ đi khám vài
+  lần/năm có thể thấy Bronze rẻ nhất về tổng chi phí. Nhưng đề bài không có dữ
+  liệu về mức sử dụng, nên mức trần là thước đo khách quan duy nhất có sẵn.
+
+  ---
+
+  4. Công thức C: điểm tổng hợp ÷ phí (toàn diện nhưng dễ lệch)
+
+  Ý tưởng: chấm điểm mọi tiêu chí, cộng lại, rồi chia cho phí.
+
+  Bước 1: chuẩn hóa (normalize). Mỗi tiêu chí có đơn vị khác nhau ($, số lần, %,
+  ngày), nên không cộng thẳng được. Ta quy tất cả về thang 0–1, trong đó 1 là
+  tốt nhất:
+  - Hạn mức năm: chia cho mức cao nhất. Bronze 500k ÷ 5M = 0.1, Silver 0.3, Gold
+    1.0
+  - Copay (càng thấp càng tốt): 1 − copay%. Bronze 0.8, Silver 0.9, Gold 1.0
+  - Không bao gồm (null): 0. Không giới hạn (-1): 1
+  - Thời gian chờ: 1 − ngày/30. Bronze 0, Silver 0.5, Gold 1.0
+  - … tương tự cho 9 tiêu chí
+
+  Bước 2: cộng điểm, rồi chia cho phí (tính theo đơn vị $100/tháng):
+
+  ┌────────┬────────────────────────┬───────┬─────────┐
+  │        │ Tổng điểm (9 tiêu chí) │ ÷ Phí │ Kết quả │
+  ├────────┼────────────────────────┼───────┼─────────┤
+  │ Bronze │ 1.9                    │ ÷ 1.5 │ 1.267   │
+  ├────────┼────────────────────────┼───────┼─────────┤
+  │ Silver │ 4.0                    │ ÷ 3.5 │ 1.143   │
+  ├────────┼────────────────────────┼───────┼─────────┤
+  │ Gold   │ 9.0                    │ ÷ 7.0 │ 1.286   │
+  └────────┴────────────────────────┴───────┴─────────┘
+
+  Gold thắng, nhưng chỉ hơn Bronze 0.02.
+
+  Vì sao C dễ lệch: giả sử bỏ tiêu chí thai sản (vì khách hàng là nam, hoặc
+  không có kế hoạch sinh con). Khi đó Gold còn 8.0 ÷ 7 = 1.143, còn Bronze vẫn
+  1.267. Bronze thắng. Chỉ cần đổi một lựa chọn nhỏ về tiêu chí là kết quả lật
+  ngược. Người không chuyên cũng khó hiểu vì sao "1.267" lại tốt hơn.
+
+  ---
+
+  5. Tóm tắt
+
+  ┌─────┬─────────────────────────┬──────────┬─────────────────┬────────────┐
+  │     │         Dễ hiểu         │  Tính    │     Ổn định     │  Kết quả   │
+  │     │                         │  copay   │                 │            │
+  ├─────┼─────────────────────────┼──────────┼─────────────────┼────────────┤
+  │ A   │ ✅ "$222 bảo hiểm cho   │ ✅       │ ✅ Gold dẫn xa  │ Gold       │
+  │     │ mỗi $1 phí"             │          │                 │            │
+  ├─────┼─────────────────────────┼──────────┼─────────────────┼────────────┤
+  │ B   │ ✅                      │ ❌       │ ✅              │ Gold       │
+  ├─────┼─────────────────────────┼──────────┼─────────────────┼────────────┤
+  │ C   │ ❌                      │ ✅       │ ❌ đổi tiêu chí │ Gold, sát  │
+  │     │                         │          │  là lật         │ nút        │
+  └─────┴─────────────────────────┴──────────┴─────────────────┴────────────┘
+
+  Tôi nghiêng về A. Nó giải thích được bằng một câu, có tính copay, và kết quả
+  không mơ hồ. Tôi sẽ thêm một dòng "Coverage per $1 premium" vào bảng để người
+  xem tự thấy vì sao Gold được đề xuất.
+
+⏺ User answered Claude's questions:
+  ⎿  · Sau khi xem giải thích, bạn chọn công thức nào cho badge 'Recommended'? →
+     A: coverage thực/$ (Recommended)
+
+⏺ Chốt công thức A: Gold nhận badge "Recommended" và bảng có thêm dòng Coverage
+  per $1 premium, áp dụng luật "best value mỗi hàng" mặc định (thấp nhất thắng
+  với premium/copay/waiting period, cao nhất/Unlimited thắng với limit, null
+  không thắng, hòa thì highlight cả). Theo dữ liệu, Gold thắng mọi hàng trừ
+  Premium (Bronze rẻ nhất) — tiếp theo tôi sẽ làm rõ cách hiểu bố cục mobile
+  "stacks vertically".
+
+⏺ User answered Claude's questions:
+  ⎿  · Trên mobile, bảng so sánh nên hiển thị thế nào? → stacks vertically là 
+     trên mobile mà nhỉ, còn trên desktop tôi nghĩ thiết kế ngang giúp tăng trải
+     nghiệm so sánh hơn?
+
+⏺ Hiểu rồi: bảng ngang cho desktop/tablet, card dọc cho mobile, dùng chung HTML
+  chỉ đổi bằng CSS media query. Giờ tôi kiểm tra remote của repo để xác định nơi
+  đặt code và cách deploy.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ User answered Claude's questions:
+  ⎿  · Đặt code và deploy ở đâu? → repo này và github page. setup ở local trước,
+     tôi sẽ tự push lên remote repo sau. Code ở root trong folder papaya-test
+
+⏺ Tôi đề xuất dùng hướng 1: một module logic tạo view-model chung, rồi tách hai
+  hàm render riêng cho bảng desktop và card mobile, ẩn hiện bằng CSS media query
+  — cách này giữ tính accessibility tốt và tránh trùng lặp logic so với hai
+  hướng còn lại.
+
+⏺ User answered Claude's questions:
+  ⎿  · Chọn hướng dựng UI nào? → 1: view-model + 2 renderer (Recommended)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Máy có Node 24, dùng được test runner có sẵn node --test mà không cần cài thư
+  viện nào. Design gồm 4 phần, mỗi phần tôi sẽ hỏi bạn duyệt.
+
+  Phần 1/4: Kiến trúc & cấu trúc file
+
+  papaya-test/
+  ├── index.html              # khung trang + <div id="app">, nạp js/main.js
+  (type="module")
+  ├── css/styles.css          # design tokens, bảng desktop, card mobile (@media
+  < 768px)
+  ├── js/
+  │   ├── data.js             # PLANS (JSON gốc, giữ nguyên) + CURRENCY = "USD"
+  │   ├── format.js           # formatMoney, formatCount, formatPercent,
+  formatDays — thuần
+  │   ├── compare.js          # findBest(values, direction),
+  coveragePerDollar(plan),
+  │   │                       # pickRecommended(plans) — thuần, không đụng DOM
+  │   ├── rows.js             # ROWS: cấu hình từng dòng so sánh (label, nhóm,
+  │   │                       # getValue(plan), direction: "higher"|"lower",
+  format)
+  │   ├── viewModel.js        # buildViewModel(PLANS, ROWS) → dữ liệu sẵn sàng
+  để render
+  │   ├── render.js           # renderTable(vm), renderCards(vm) — chỉ tạo DOM,
+  không tính toán
+  │   └── main.js             # entry: build view-model → render cả 2 view vào
+  #app
+  ├── tests/                  # node --test: format, compare, viewModel
+  ├── package.json            # "type": "module"; scripts: test, start — 0
+  dependency
+  ├── .github/workflows/deploy.yml   # GitHub Pages, chỉ publish index.html +
+  css/ + js/
+  └── README.md               # cách chạy, công thức Recommended, timeline
+
+  Luồng dữ liệu:
+  PLANS → buildViewModel(PLANS, ROWS) → { plans: [...], rows: [{ label, cells: 
+  [{ text, included, isBest }] }] } → renderTable + renderCards → DOM
+
+  Nguyên tắc:
+  - Mọi quyết định (giá trị nào tốt nhất, gói nào recommended, hiển thị chuỗi
+    gì) nằm trong các module thuần, test được bằng Node mà không cần trình
+    duyệt.
+  - render.js chỉ đọc view-model và dựng DOM.
+  - Thêm một dòng so sánh mới chỉ cần thêm một entry vào ROWS.
+
+  Lưu ý: ES module không chạy khi mở trực tiếp bằng file://. Chạy local thì dùng
+  npm start (bên trong là python3 -m http.server). Trên GitHub Pages thì không
+  bị vấn đề này.
+
+  Phần này ổn chưa? Nếu ổn tôi sang Phần 2: các dòng trong bảng và cách hiển thị
+  giá trị.
+
+❯ Hãy sang phần tiếp theo                                                       
+
+⏺ Phần 2/4: Các dòng trong bảng & cách hiển thị
+
+  Đầu mỗi cột gói (header): tên gói, badge ★ Recommended (chỉ Gold), và danh
+  sách highlights dạng tag nhỏ (ví dụ "Includes dental", "Lower copay"). Hiển
+  thị đủ highlights để không thiếu dữ liệu nào.
+
+  Các dòng, chia thành 4 nhóm. Bảng dưới là giá trị thật sẽ hiển thị, nên cũng
+  dùng để kiểm tra dữ liệu có đúng không:
+
+  Nhóm: Cost
+  Dòng: Monthly premium
+  Bronze: $150/mo<br><sub>$1,800/yr</sub>
+  Silver: $350/mo<br><sub>$4,200/yr</sub>
+  Gold: $700/mo<br><sub>$8,400/yr</sub>
+  Best: Bronze (thấp nhất)
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Copay
+  Bronze: 20%
+  Silver: 10%
+  Gold: 0%
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Waiting period
+  Bronze: 30 days
+  Silver: 15 days
+  Gold: None
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm: Coverage
+  Dòng: Annual limit
+  Bronze: $500,000
+  Silver: $1,500,000
+  Gold: $5,000,000
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Outpatient: per visit
+  Bronze: ✓ $3,000
+  Silver: ✓ $5,000
+  Gold: ✓ $10,000
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Outpatient: visits/year
+  Bronze: 30
+  Silver: 60
+  Gold: Unlimited
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Inpatient: per day
+  Bronze: ✓ $10,000
+  Silver: ✓ $25,000
+  Gold: ✓ $50,000
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Inpatient: days/year
+  Bronze: 60
+  Silver: 120
+  Gold: Unlimited
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm: Extra benefits
+  Dòng: Dental
+  Bronze: ✗ Not included
+  Silver: ✓ $30,000/yr
+  Gold: ✓ $100,000/yr
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm:
+  Dòng: Maternity
+  Bronze: ✗ Not included
+  Silver: ✗ Not included
+  Gold: ✓ $200,000/pregnancy
+  Best: Gold
+  ────────────────────────────────────────
+  Nhóm: Value
+  Dòng: Coverage per $1 premium
+  Bronze: $222
+  Silver: $321
+  Gold: $595
+  Best: Gold → ★
+
+  Quy tắc hiển thị:
+  - Tiền: dùng Intl.NumberFormat en-US, số đầy đủ, không viết tắt (ghi
+    $5,000,000, không ghi $5M), để tránh bị hiểu sai giá trị.
+  - -1: hiện "Unlimited". Waiting 0 ngày: hiện "None".
+  - Có / không có quyền lợi: có thì icon ✓ màu xanh kèm giá trị. null thì icon ✗
+    màu xám kèm chữ "Not included". Luôn có icon + chữ, không chỉ dựa vào màu,
+    để người mù màu vẫn đọc được.
+  - Best value: ô được tô nền nhạt và có nhãn nhỏ "Best". Cũng không chỉ dựa vào
+    màu.
+  - Dòng "Coverage per $1 premium": có chú thích công thức ngay dưới bảng:
+    annual limit × (100% − copay) ÷ yearly premium. Nhờ vậy người xem hiểu vì
+    sao Gold được đề xuất.
+
+  Luật best value & recommended (trong compare.js):
+  - Mỗi dòng có direction: "lower" áp dụng cho premium, copay, waiting; "higher"
+    áp dụng cho các dòng còn lại.
+  - -1 được quy đổi thành Infinity khi so sánh, nên Unlimited luôn thắng. null
+    bị loại khỏi so sánh.
+  - Hòa thì highlight tất cả các gói hòa. Nếu cả 3 gói bằng nhau thì không
+    highlight gì, vì highlight lúc đó chỉ gây nhiễu.
+  - Recommended là gói có coveragePerDollar cao nhất. Nếu hòa thì gói có phí
+    thấp hơn thắng.
+
+  Mobile card: mỗi card theo thứ tự header (tên, badge, highlights) rồi đến các
+  nhóm, mỗi dòng dạng label ……… value. Highlight "Best" và icon ✓/✗ giữ nguyên.
+  Card xếp theo thứ tự trong dữ liệu (Bronze → Silver → Gold). Card Gold có viền
+  nhấn và badge Recommended.
+
+  Phần này ổn chưa? Nếu ổn tôi sang Phần 3: phong cách giao diện.
+
+❯ Ok hãy sang phần 3                                                            
+
+⏺ Phần tiếp theo có thể dễ hiểu hơn nếu tôi cho bạn xem trực tiếp. Tôi có thể
+  dựng mockup, bảng màu và so sánh các phong cách trong một tab trình duyệt
+  trong lúc mình trao đổi. Tính năng này còn mới và khá tốn token. Bạn có muốn
+  dùng không? Nếu đồng ý tôi sẽ mở tab cho bạn.
+
+❯ Không                                                                         
+
+⏺ Được, mình tiếp tục bằng text.
+
+  Phần 3/4: Phong cách giao diện
+
+  Hướng chung: phong cách fintech/bảo hiểm, sáng, gọn, tạo cảm giác tin cậy.
+  Không dùng thư viện CSS hay font ngoài, chỉ dùng font hệ thống (system-ui) để
+  trang tải nhanh và không phụ thuộc gì.
+
+  Bố cục trang, từ trên xuống:
+  1. Tiêu đề "Compare our plans", kèm một dòng phụ ngắn ("Find the coverage that
+     fits you").
+  2. Bảng so sánh (desktop) hoặc danh sách card (mobile). Nội dung rộng tối đa
+     khoảng 1080px, căn giữa.
+  3. Chú giải và ghi chú ngay dưới bảng:
+     - Legend: ✓ Included · ✗ Not included · Best = giá trị tốt nhất trong hàng.
+     - Giải thích công thức "Coverage per $1 premium" và lý do Gold được
+       recommend.
+
+  Màu sắc (đặt thành CSS variables trong :root):
+
+  ┌────────────┬───────────────────────────┬───────────────────────────────┐
+  │  Vai trò   │            Màu            │           Dùng cho            │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │ Nền trang  │ xám rất nhạt #F7F8FA      │ background                    │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │ Bề mặt     │ trắng, viền #E5E7EB, bo   │ bảng, card                    │
+  │            │ góc 12px, bóng nhẹ        │                               │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │ Primary    │ xanh navy #1E3A8A         │ tiêu đề, badge Recommended,   │
+  │            │                           │ viền cột recommended          │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │            │ nền xanh nhạt #EEF4FF +   │                               │
+  │ Best value │ pill chữ "Best" màu       │ ô tốt nhất mỗi hàng           │
+  │            │ primary                   │                               │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │ Included   │ xanh lá #16A34A           │ icon ✓                        │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │ Not        │ xám #9CA3AF               │ icon ✗ + chữ "Not included"   │
+  │ included   │                           │                               │
+  ├────────────┼───────────────────────────┼───────────────────────────────┤
+  │ Màu từng   │ đồng #B87333 · bạc        │ dải màu mỏng trên đầu mỗi     │
+  │ hạng       │ #8A94A6 · vàng #C9A227    │ cột/card, để nhận ra gói ngay │
+  └────────────┴───────────────────────────┴───────────────────────────────┘
+
+  Chi tiết giúp người không chuyên đọc nhanh:
+  - Dòng tiêu đề nhóm (Cost / Coverage / Extra benefits / Value) là một hàng
+    full-width nền nhạt, chia bảng thành từng khối dễ quét mắt.
+  - Chú thích ngắn dưới label (hiện luôn, không dùng tooltip vì tooltip không
+    hoạt động trên màn cảm ứng):
+    - Copay: "Share of each bill you pay"
+    - Waiting period: "Days before coverage starts"
+    - Annual limit: "Max paid per year, all benefits combined"
+  - Cột Recommended (Gold) có viền primary, badge ★ Recommended nằm trên tên
+    gói, và nền cột hơi đậm hơn. Vì Gold thắng gần hết các hàng nên cột này sẽ
+    có nhiều pill "Best". Đó là đúng dữ liệu, không phải lỗi thiết kế.
+  - Số và tiền căn giữa trong cột gói, label căn trái.
+
+  Accessibility: bảng có <caption>, các <th scope="col|row">, độ tương phản đạt
+  WCAG AA, trạng thái luôn có icon + chữ (không chỉ màu).
+
+  Không làm (YAGNI):
+  - Dark mode.
+  - Nút "Choose plan", vì không có trang đích.
+  - Sticky header, vì bảng chỉ khoảng 12 hàng.
+  - Animation.
+
+  Phần này ổn chưa? Nếu ổn tôi sang Phần 4 (cuối): testing, deploy & timeline.
+❯ Hãy sang phần 4                                                               
+
+⏺ Phần 4/4: Testing, deploy & timeline
+
+  Testing (TDD: viết test trước, code sau)
+
+  Dùng node --test, không cài thư viện nào. Chạy bằng npm test.
+
+  File test: format.test.js
+  Kiểm tra gì: 500000 → $500,000; -1 → Unlimited; 0 ngày → None; 20 → 20%
+  ────────────────────────────────────────
+  File test: compare.test.js
+  Kiểm tra gì: findBest theo cả hai hướng higher/lower; Infinity luôn thắng;
+  null
+  bị loại; hòa thì highlight nhiều ô; cả 3 bằng nhau thì không highlight.
+  coveragePerDollar ra đúng 222.2 / 321.4 / 595.2. pickRecommended chọn Gold;
+  khi hòa thì chọn gói phí thấp hơn
+  ────────────────────────────────────────
+  File test: viewModel.test.js
+  Kiểm tra gì: Chạy trên dữ liệu thật. Đối chiếu từng ô với bảng ở Phần 2 (chuỗi
+
+  hiển thị, trạng thái included, cờ best). Test này trực tiếp phủ tiêu chí "no
+  missing or incorrect values"
+
+  render.js chỉ dựng DOM nên không viết unit test (tránh phải cài jsdom). Thay
+  vào đó tôi kiểm tra trực quan: chạy server local, mở trong Browser pane, chụp
+  màn hình ở hai kích thước desktop 1280px và mobile 375px, rồi so với design.
+
+  Deploy (GitHub Pages)
+
+  File .github/workflows/deploy.yml:
+  - Kích hoạt khi: push lên master, hoặc chạy tay (workflow_dispatch). GitHub
+    Pages mặc định chỉ cho deploy từ nhánh chính.
+  - Các bước: checkout → npm test (test fail thì dừng, không deploy) → copy
+    index.html, css/, js/ vào _site/ → upload-pages-artifact → deploy-pages.
+  - Các file tests/, file .md và Logical_Questions/ không bị publish.
+
+  Việc bạn tự làm sau khi push: vào repo trên GitHub → Settings → Pages →
+  Source: GitHub Actions. README sẽ ghi rõ bước này.
+
+  README
+
+  Gồm các mục:
+  - Cách chạy (npm start, npm test)
+  - Cấu trúc code
+  - Công thức Recommended và lý do chọn
+  - Giả định (USD, luật best value)
+  - Timeline
+  - Mục ngắn "Approach" mô tả cách chia nhỏ bài toán và dùng AI. Đề bài có chấm
+    điểm khả năng decompose và direct the AI tool, nên mục này có ích.
+
+  Timeline ước lượng: khoảng 3 giờ
+
+  ┌───────────────────────────────────────────────────┬────────────────┐
+  │                       Bước                        │   Thời gian    │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ Làm rõ yêu cầu + design (đang làm)                │ ~30 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ Setup + data.js + format.js + compare.js kèm test │ ~30 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ rows.js + viewModel.js kèm test                   │ ~20 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ index.html + render.js                            │ ~20 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ CSS desktop + mobile                              │ ~40 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ Kiểm tra trực quan + sửa lỗi                      │ ~20 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ Workflow deploy + README                          │ ~15 phút       │
+  ├───────────────────────────────────────────────────┼────────────────┤
+  │ Tổng                                              │ ~2 giờ 55 phút │
+  └───────────────────────────────────────────────────┴────────────────┘
+
+  Con số này nằm trong khung 2–3 giờ đề bài đưa ra. Bạn nên chỉnh lại theo tốc
+  độ thực tế của mình trước khi gửi.
+
+  ---
+
+  Bước tiếp theo nếu bạn đồng ý:
+  1. Tôi viết spec vào
+     docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md và
+     commit lên nhánh challenge01.
+  2. Tự rà soát spec, rồi nhờ bạn đọc lại.
+  3. Sau đó mới chuyển sang lập kế hoạch triển khai.
+
+  Phần 4 ổn chưa?
+
+❯ OK hãy ghi spec                                                               
+
+⏺ Write(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Wrote 274 lines to
+     docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md
+      1 # Insurance Plan Comparison Page — Design Spec
+      2 
+      3 - **Date:** 2026-09-11
+      5 - **Branch:** `challenge01`
+      6 
+      7 ## 1. Goal
+      8 
+        , Gold) side by side, so a non-technical visitor can see at a gla
+        nce what each plan covers, which plan wins each criterion, and wh
+        ich plan is recommended.
+     … +362 lines (ctrl+o to expand)
+
+⏺ Tôi phát hiện spec còn mơ hồ: khi benefit là null, việc truy cập thuộc tính ở
+  các dòng phụ (visits, days) sẽ gây lỗi. Tôi sẽ bổ sung quy tắc rõ ràng cho
+  trường hợp này.
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 2 lines
+       99  
+      100  Adding a new comparison row means adding one entry to `ROWS`.
+      101  
+      102 +`getValue` must use optional chaining (e.g. `plan.benefits.out
+          +patient?.visits_per_year ?? null`), so that when a whole benef
+          +it is `null`, every row that depends on it returns `null` and 
+          +renders as `✗ Not included` instead of throwing.              
+      103 +                                                              
+      104  ### 4.4 View-model shape (`buildViewModel`)
+      105  
+      106  ```js
+
+  Committed 4b4f2c0 (ctrl+o to expand)
+
+⏺ Tôi đã viết spec và commit lên nhánh challenge01:
+  2026-09-11-insurance-plan-comparison-design.md
+  (docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md).
+
+  Spec viết bằng tiếng Anh, vì repo này sẽ nộp cho người chấm và code, README,
+  giao diện đều bằng tiếng Anh. Nội dung là tất cả những gì mình đã chốt:
+  - Quyết định kèm lý do: stack, USD, công thức Recommended, bố cục
+    desktop/mobile, cách dựng UI, hosting.
+  - Cấu trúc file, dạng dữ liệu của cấu hình dòng và của view-model.
+  - Luật format số, best value, Recommended.
+  - Bảng giá trị hiển thị mong đợi cho từng ô. Test sẽ đối chiếu với bảng này.
+  - Thiết kế giao diện, bảng màu, accessibility, testing, deploy, nội dung
+    README, timeline.
+
+  Khi tự rà soát, tôi sửa thêm một chỗ: nếu một quyền lợi là null thì mọi dòng
+  liên quan phải hiện "✗ Not included" thay vì làm lỗi trang. Dữ liệu hiện tại
+  chưa gặp trường hợp này.
+
+  Thư mục AI_Engineering_Challenges/ vẫn chưa được commit như lúc đầu. Tôi chỉ
+  commit file spec.
+
+  Bạn đọc spec và báo tôi nếu muốn sửa gì. Khi bạn duyệt, tôi sẽ viết kế hoạch
+  triển khai chi tiết.
+
+❯ /superpowers:writing-plans hãy lên plan                                       
+
+⏺ I'm using the writing-plans skill to create the implementation plan.
+
+  Trước khi viết plan, tôi chạy thử phần code thuần (format, compare, rows,
+  viewModel) cùng test trong thư mục scratchpad. Mục đích là để chắc chắn code
+  và test trong plan chạy đúng ngay khi làm theo, chứ không phải triển khai
+  thật.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Tất cả 34 test trong prototype đều pass. Giờ tôi sẽ prototype giao diện (HTML,
+  render, CSS) và kiểm tra trên trình duyệt để đảm bảo phần CSS trong plan
+  không bị lỗi bố cục.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Bố cục desktop khớp với design, chỉ có lỗi nhỏ: badge Recommended đẩy header
+  Gold cao hơn Bronze và Silver. Tôi sẽ đặt badge ở vị trí tuyệt đối để căn
+  thẳng hàng cả 3 gói, rồi kiểm tra tiếp bản mobile.
+  ⎿  Error: [resize_window] Viewport set to 375x812 (mobile) on this tab. It 
+     stays (scaled down to fit if larger than the pane) until you call this tool
+     with preset "desktop", so reset it when you finish testing.
+
+
+     Tab Context:
+     - Executed on tabId: seed
+     - Available tabs:
+       • tabId seed: "Compare Insurance Plans" (http://localhost:8765)
+     [navigate] navigated to http://localhost:8765
+
+
+     … +13 lines (ctrl+o to expand)
+
+⏺ Cấu trúc bản mobile đã đúng chuẩn: bảng bị ẩn, 3 card xếp dọc, không cuộn
+  ngang và mọi giá trị khớp spec. Giờ tôi sẽ chụp màn hình để kiểm tra phần hình
+  ảnh.
+
+⏺ Bảng browser đang ẩn nên ảnh chụp bị trắng, nhưng kết quả script đã đủ xác
+  nhận bố cục mobile. Giờ tôi sẽ sửa lỗi lệch header trong prototype và kiểm tra
+  lại bằng số đo.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Đã xác nhận tên gói, dải màu 3 cột thẳng hàng và mốc breakpoint (768px bảng,
+  767px card) đúng spec, không bị cuộn ngang. Giờ tôi tắt server prototype và
+  reset lại kích thước viewport.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Background command "Serve prototype on port 8765" failed with exit code 143
+
+⏺ Exit code 143 chỉ là do tôi chủ động tắt server, prototype đã chạy ổn. Tôi
+  phát hiện màu --excluded không đạt WCAG AA nên đổi sang #6B7280, đồng thời bổ
+  sung token --primary-soft còn thiếu, giờ tôi cập nhật spec và viết plan.
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 3 lines, removed 1 line
+      224  | `--border` | `#E5E7EB` | borders |
+      225  | `--radius` | `12px` | table and cards |
+      226  | `--primary` | `#1E3A8A` | headings, Recommended badge, recom
+           mended border |
+      227 +| `--primary-soft` | `#F5F8FF` | recommended column background
+          + |                                                            
+      228  | `--best-bg` | `#EEF4FF` | best-value cell background; "Best"
+            pill text uses `--primary` |
+      229  | `--included` | `#16A34A` | ✓ icon |
+      229 -| `--excluded` | `#9CA3AF` | ✗ icon and "Not included" text | 
+      230 +| `--excluded` | `#6B7280` | ✗ icon and "Not included" text (4
+          +.8:1 on white, passes AA; the earlier `#9CA3AF` was 2.5:1 and 
+          +failed) |                                                     
+      231 +| `--text` / `--muted` | `#111827` / `#6B7280` | body text / h
+          +ints, subtexts, tags |                                        
+      232  | `--tier-bronze` / `--tier-silver` / `--tier-gold` | `#B87333
+           ` / `#8A94A6` / `#C9A227` | tier stripe |
+      233  
+      234  Font: `system-ui` stack (no web fonts).
+
+  Read 1 file (ctrl+o to expand)
+⏺ Write(docs/superpowers/plans/2026-09-11-insurance-plan-comparison.md)
+  ⎿  Wrote 1484 lines to
+     docs/superpowers/plans/2026-09-11-insurance-plan-comparison.md
+      1 # Insurance Plan Comparison Page Implementation Plan
+      3 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:su
+        bagent-driven-development (recommended) or superpowers:executing-
+         [ ]`) syntax for tracking.
+      5 **Goal:** Build a static page that compares the Bronze, Silver an
+        d Gold insurance plans. It shows a side-by-side table on desktop 
+        w, and puts a "Recommended" badge on one plan. It deploys to GitH
+        ub Pages.
+      7 **Architecture:** Pure ES modules turn the plan data into one ren
+        wModel`. Th
+     … +1705 lines (ctrl+o to expand)
+
+⏺ Tôi đã tự rà soát plan so với spec: mọi yêu cầu đều được phủ, không có
+  placeholder thiếu, và tên hàm/class/số liệu test đều nhất quán giữa các task.
+  Giờ tôi sẽ commit plan kèm phần sửa spec.
+
+  Committed 1b613d5 (ctrl+o to expand)
+
+⏺ Tôi đã viết xong plan và commit lên nhánh challenge01:
+  2026-09-11-insurance-plan-comparison.md
+  (docs/superpowers/plans/2026-09-11-insurance-plan-comparison.md).
+
+  Toàn bộ code trong plan đã được chạy thử trong prototype. Cả 34 test đều pass.
+  Tôi cũng đã mở trang trên trình duyệt: bố cục desktop 1280px khớp design, mốc
+  chuyển 768/767px đúng, và trang không bị cuộn ngang ở 375px. Riêng bản mobile
+  tôi chỉ kiểm tra bằng script, chưa xem bằng mắt, vì browser pane bị ẩn nên
+  ảnh chụp ra trang trắng. Plan có sẵn bước chụp màn hình mobile để kiểm tra
+  lại.
+
+  Plan gồm 6 task, mỗi task một commit:
+  1. Khởi tạo project, dữ liệu gói, các hàm format số, kèm 6 test
+  2. Logic chọn giá trị tốt nhất và gói Recommended, kèm 11 test
+  3. Cấu hình các dòng và view-model, kèm 17 test đối chiếu từng ô với spec
+  4. File HTML và phần dựng giao diện (render), kiểm tra trên trình duyệt
+  5. CSS cho desktop và mobile, kiểm tra ở 1280, 768, 767 và 375px
+  6. Workflow deploy GitHub Pages và README (có timeline và mục Approach)
+
+  Hai thay đổi so với spec, đã sửa và commit cùng plan:
+  - Màu chữ "Not included" cũ (#9CA3AF) chỉ đạt độ tương phản 2.5:1, không đạt
+    WCAG AA như chính spec yêu cầu. Tôi đổi sang #6B7280 (4.8:1).
+  - Badge Recommended làm header của Gold cao hơn, nên dải màu và tên gói bị
+    lệch so với hai gói kia. Tôi đặt badge ở vị trí tuyệt đối để cả ba header
+    thẳng hàng.
+
+  Có hai cách thực hiện plan:
+  1. Subagent-Driven (khuyên dùng): mỗi task giao cho một subagent mới, tôi
+     review giữa các task, lặp nhanh.
+  2. Inline: tôi làm lần lượt các task ngay trong session này, có điểm dừng để
+     bạn kiểm tra.
+
+  Bạn chọn cách nào?
+
+❯ Inline                                                                        
+
+⏺ Skill(superpowers:executing-plans)
+  ⎿  Successfully loaded skill
+
+⏺ Tôi sẽ triển khai plan trực tiếp trong session này tại nhánh challenge01 ở
+  root của papaya-test, không dùng subagent hay worktree riêng vì bạn đã chọn
+  Inline và yêu cầu code nằm ở root. Plan đã được rà soát kỹ, không có vấn đề gì
+  cần hỏi thêm.
+
+⏺ Write(package.json)
+  ⎿  Wrote 10 lines to package.json
+       1 {
+       2   "name": "insurance-plan-comparison",
+       3   "version": "1.0.0",
+       4   "private": true,
+       5   "type": "module",
+       6   "scripts": {
+       7     "start": "python3 -m http.server 8000",
+       8     "test": "node --test"
+       9   }
+      10 }
+
+⏺ Write(.gitignore)
+  ⎿  Wrote 2 lines to .gitignore
+      1 _site/
+      2 .DS_Store
+
+⏺ Write(js/data.js)
+  ⎿  Wrote 49 lines to js/data.js
+       1 export const CURRENCY = "USD";
+       2 
+       3 /** Value used in the plan data to mean "no limit". */
+       4 export const UNLIMITED = -1;
+       5 
+       6 export const PLANS = [
+       7   {
+       8     name: "Bronze",
+       9     monthly_premium: 150,
+      10     annual_limit: 500000,
+     … +40 lines (ctrl+o to expand)
+
+⏺ Write(tests/format.test.js)
+  ⎿  Wrote 33 lines to tests/format.test.js
+      1 import assert from "node:assert/strict";
+      2 import { test } from "node:test";
+      3 import { formatCount, formatDays, formatMoney, formatPercent } fr
+        om "../js/format.js";
+      4 
+        s", () => {
+      6   assert.equal(formatMoney(150), "$150");
+      7   assert.equal(formatMoney(500000), "$500,000");
+      8   assert.equal(formatMoney(5000000), "$5,000,000");
+      9 });
+     … +25 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(js/format.js)
+  ⎿  Wrote 27 lines to js/format.js
+       1 import { CURRENCY, UNLIMITED } from "./data.js";
+       2 
+       3 const moneyFormatter = new Intl.NumberFormat("en-US", {
+       4   style: "currency",
+       5   currency: CURRENCY,
+       6   minimumFractionDigits: 0,
+       7   maximumFractionDigits: 0,
+       8 });
+       9 
+      10 export function formatMoney(value) {
+     … +17 lines (ctrl+o to expand)
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Write(tests/compare.test.js)
+  ⎿  Wrote 57 lines to tests/compare.test.js
+       1 import assert from "node:assert/strict";
+       3 import { coveragePerDollar, findBest, pickRecommended } from "..
+         /js/compare.js";
+       4 import { PLANS } from "../js/data.js";
+       6 const assertClose = (actual, expected) =>
+       7   assert.ok(Math.abs(actual - expected) < 0.01, `expected ${actu
+       8 
+       9 test("findBest picks the highest value when direction is higher"
+         , () => {
+         se, false, true]);
+     … +67 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(js/compare.js)
+  ⎿  Wrote 39 lines to js/compare.js
+       1 import { UNLIMITED } from "./data.js";
+       2 
+       3 function toComparable(value) {
+       5   return value === UNLIMITED ? Infinity : value;
+       6 }
+       7 
+       8 /**
+         s row.
+      10  * null never wins; ties all win; if every plan has the same val
+         ue, nothing wins.
+     … +36 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(tests/viewModel.test.js)
+  ⎿  Wrote 88 lines to tests/viewModel.test.js
+      1 import assert from "node:assert/strict";
+      2 import { test } from "node:test";
+      3 import { PLANS } from "../js/data.js";
+      4 import { ROWS } from "../js/rows.js";
+      5 import { buildViewModel } from "../js/viewModel.js";
+      6 
+      7 const vm = buildViewModel(PLANS, ROWS);
+      8 const allRows = vm.groups.flatMap((group) => group.rows);
+      9 const findRow = (id) => allRows.find((row) => row.id === id);
+     … +105 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(js/rows.js)
+  ⎿  Wrote 105 lines to js/rows.js
+       1 import { coveragePerDollar } from "./compare.js";
+       2 import { formatCount, formatDays, formatMoney, formatPercent } f
+         rom "./format.js";
+       4 /**
+       5  * One entry per comparison row, in display order.
+       6  * getValue returns a number, or null when the plan does not inc
+         lude it.
+       8 export const ROWS = [
+       9   {
+      10     id: "monthly_premium",
+     … +104 lines (ctrl+o to expand)
+
+⏺ Write(js/viewModel.js)
+  ⎿  Wrote 47 lines to js/viewModel.js
+       1 import { findBest, pickRecommended } from "./compare.js";
+       2 
+       3 export const RECOMMENDATION_FORMULA = "annual limit × (100% − co
+         pay) ÷ yearly premium";
+       4 
+       6   const values = plans.map((plan) => row.getValue(plan));
+       7   const bestFlags = findBest(values, row.direction);
+       8 
+       9   return plans.map((plan, index) => {
+      10     const value = values[index];
+     … +40 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(index.html)
+  ⎿  Wrote 21 lines to index.html
+       1 <!doctype html>
+       2 <html lang="en">
+       3   <head>
+       5     <meta name="viewport" content="width=device-width, initial-s
+         cale=1" />
+       6     <title>Compare Insurance Plans</title>
+       7     <meta name="description" content="Compare Bronze, Silver and
+       8     <link rel="stylesheet" href="css/styles.css" />
+       9     <script type="module" src="js/main.js"></script>
+      10   </head>
+     … +14 lines (ctrl+o to expand)
+⏺ Write(js/render.js)
+  ⎿  Wrote 139 lines to js/render.js
+       1 /** Creates an element. props: className, text, or any attribute
+         ; falsy props and children are skipped. */
+       2 function el(tag, props = {}, children = []) {
+       4   for (const [key, value] of Object.entries(props)) {
+       5     if (value === null || value === undefined || value === false
+         ) continue;
+       6     if (key === "className") node.className = value;
+       8     else node.setAttribute(key, value);
+       9   }
+      10   for (const child of [].concat(children)) {
+     … +150 lines (ctrl+o to expand)
+
+⏺ Write(js/main.js)
+  ⎿  Wrote 7 lines to js/main.js
+      1 import { PLANS } from "./data.js";
+      2 import { renderCards, renderNotes, renderTable } from "./render.j
+        s";
+      3 import { ROWS } from "./rows.js";
+      4 import { buildViewModel } from "./viewModel.js";
+      5 
+      6 const vm = buildViewModel(PLANS, ROWS);
+      7 document.getElementById("app").append(renderTable(vm), renderCard
+        s(vm), renderNotes(vm));
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 34/34 test vẫn pass. Giờ tôi sẽ mở trang trong trình duyệt bằng cách tạo file
+  .claude/launch.json để khởi động server cho Browser pane, file này chỉ dùng
+  local nên sẽ không commit.
+
+⏺ Write(.claude/launch.json)
+  ⎿  Wrote 11 lines to .claude/launch.json
+       1 {
+       2   "version": "0.0.1",
+       3   "configurations": [
+       4     {
+       5       "name": "site",
+       6       "runtimeExecutable": "python3",
+       7       "runtimeArgs": ["-m", "http.server", "8000"],
+       8       "port": 8000
+       9     }
+      10   ]
+     … +1 line (ctrl+o to expand)
+
+⏺ Tất cả kết quả khớp với plan: 33 ô, 3 card, cột Gold đúng, badge ở đúng vị
+  trí; chỉ có lỗi 404 dự kiến do styles.css chưa tồn tại. Tôi commit Task 4 và
+  giữ server chạy để chuyển sang Task 5.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(css/styles.css)
+  ⎿  Wrote 314 lines to css/styles.css
+       1 :root {
+       2   --bg: #f7f8fa;
+       3   --surface: #ffffff;
+       4   --border: #e5e7eb;
+       5   --radius: 12px;
+          24, 39, 0.04);
+       7   --text: #111827;
+       8   --muted: #6b7280;
+       9   --primary: #1e3a8a;
+      10   --primary-soft: #f5f8ff;
+     … +312 lines (ctrl+o to expand)
+
+⏺ Kiểm tra desktop đã đạt: 3 dải màu và tên gói thẳng hàng, Gold có badge và
+  viền navy, các pill BEST đúng vị trí. Giờ tôi sẽ kiểm tra mốc chuyển giao diện
+  và bản mobile.
+
+⏺ Các mốc chuyển đổi đều đạt yêu cầu và card Bronze trên mobile hiển thị đẹp,
+  không cuộn ngang. Giờ tôi sẽ cuộn xuống xem card Gold để kiểm tra badge và
+  viền.
+
+⏺ Không chụp được ảnh card Gold do browser pane bị ẩn, nhưng đã xác nhận viền
+  2px solid màu navy và thứ tự Bronze → Silver → Gold đều đúng qua số đo. Giờ
+  tôi sẽ kiểm tra tiếp vị trí của badge.
+
+⏺ Thẻ Gold đã đạt đủ tiêu chí: badge "★ Recommended", 10 pill BEST khớp với các
+  hàng Gold thắng, và 3 ô "Not included" đúng vị trí. Tôi sẽ commit Task 5.
+
+  Ran 1 shell command (ctrl+o to expand)
+⏺ Write(.github/workflows/deploy.yml)
+  ⎿  Wrote 45 lines to .github/workflows/deploy.yml
+       1 name: Deploy to GitHub Pages
+       2 
+       3 on:
+       4   push:
+       5     branches: [master]
+       6   workflow_dispatch:
+       7 
+       8 permissions:
+       9   contents: read
+      10   pages: write
+     … +35 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(README.md)
+  ⎿  Wrote 90 lines to README.md
+      1 # Insurance Plan Comparison
+      3 A single page that compares the Bronze, Silver and Gold insurance
+         plans side by side. It highlights the best value in each row and
+         recommends the plan with the best value for money.
+      5 - **Live URL:** _add after the first GitHub Pages deploy_
+      6 - **Challenge:** [`AI_Engineering_Challenges/AI_Challenge_01.md`]
+      7 - **Design spec:** [`docs/superpowers/specs/2026-09-11-insurance-
+        plan-comparison-design.md`](docs/superpowers/specs/2026-09-11-ins
+        urance-plan-comparison-design.md)
+      9 ## Run locally
+     … +114 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Skill(superpowers:finishing-a-development-branch)
+  ⎿  Successfully loaded skill
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I'm using the finishing-a-development-branch skill to complete this work.
+
+  Kết quả
+
+  Tôi đã làm xong cả 6 task của plan. 34/34 test pass khi chạy lại trên code
+  cuối cùng. Mỗi task là một commit riêng trên nhánh challenge01:
+
+  fa248be ci: deploy to GitHub Pages; docs: add README
+  e824b29 style: add comparison table and mobile card styles
+  a18428d feat: render comparison table, mobile cards and notes
+  3324583 feat: add comparison rows config and view-model
+  a685d35 feat: add best-value and recommended-plan logic
+  8742d38 feat: add plan data and value formatters
+
+  Đã kiểm tra trên trình duyệt thật:
+  - Desktop 1280px: chụp màn hình và đối chiếu, khớp design. Ba header thẳng
+    hàng, Gold có badge và viền navy, pill BEST đúng từng hàng.
+  - Mốc chuyển: 768px hiện bảng, 767px chuyển sang card. Không có cuộn ngang ở
+    cả hai kích thước.
+  - Mobile 375px: chụp được card Bronze, hiển thị tốt. Card Gold tôi chỉ kiểm
+    tra bằng số đo, vì browser pane bị ẩn nên ảnh chụp ra trang trắng. Kết quả
+    đo: viền navy 2px, badge nằm gọn trong card và phía trên tên gói, 10 pill
+    BEST, thứ tự các card Bronze → Silver → Gold.
+  - Chưa kiểm tra: workflow deploy chưa chạy trên GitHub vì repo chưa có remote.
+    Tôi mới chạy thử ở local bước gom file, kết quả đúng 9 file site cần
+    publish.
+
+  Hai điều cần bạn để ý:
+  1. AI_Engineering_Challenges/ vẫn chưa được commit, như lúc bắt đầu. README có
+     link tới AI_Engineering_Challenges/AI_Challenge_01.md. Nếu không commit
+     thư mục này thì link sẽ hỏng trên GitHub. Bạn muốn tôi commit nó không?
+  2. .claude/launch.json là file tôi tạo để chạy server preview ở máy local. Tôi
+     không commit file này.
+
+  ---
+
+  Nhánh challenge01 tách ra từ master (commit 742525a), đúng không?
+
+  Implementation complete. What would you like to do?
+
+  1. Merge back to master locally
+  2. Push and create a Pull Request
+  3. Keep the branch as-is (I'll handle it later)
+
+  Which option?
+
+  Repo chưa có remote nên hiện chưa làm được option 2. Workflow deploy chạy khi
+  có push lên master. Vì vậy nếu bạn định tự push, option 1 (merge vào master ở
+  local) là bước cần làm trước.
+
+❯ - Ở phần header, mỗi loại plan bỏ hết các badge như "Basic coverage", "Lower  
+  copay" và thay bằng 1 câu ngắn gọn để mô tả cái tốt nhất của plan.            
+  - Badge "Best" tôi nghĩ nên đặt ở chỗ khác để dòng text giữa các cột không bị 
+  lệch .                                                                        
+
+⏺ Skill(superpowers:brainstorming)
+  ⎿  Successfully loaded skill
+
+⏺ Đây là thay đổi nhỏ (bounded) nên tôi sẽ hỏi trước khi sửa: để tránh mất dữ
+  liệu highlights bắt buộc, tôi đề xuất viết lại mô tả từng gói sao cho vẫn giữ
+  nội dung đó, và đưa ra hai bộ câu (đầy đủ/ngắn gọn) để bạn chọn.
+
+⏺ User answered Claude's questions:
+  ⎿  · Dùng bộ câu mô tả nào cho header mỗi gói? → Bộ A — câu đầy đủ 
+     (Recommended)
+
+⏺ Đã chốt bộ A. Về vị trí pill "Best": lệch là do pill hiện đặt dưới giá trị
+  khiến ô cao hơn và chữ bị đẩy lên so với các cột khác — tôi sẽ điều chỉnh lại
+  vị trí này.
+
+⏺ User answered Claude's questions:
+  ⎿  · Đặt dấu "Best" ở đâu? → Góc trên-phải ô (Recommended)
+
+⏺ Chốt đặt tag ở góc trên-phải ô. Đây là design ngắn cho hai thay đổi:
+
+  1. Câu mô tả thay cho các tag highlights
+  - js/data.js: thêm export const TAGLINES = { Bronze: "…", Silver: "…", Gold: 
+    "…" } với 3 câu của bộ A. PLANS giữ nguyên như JSON đề bài.
+  - js/viewModel.js: đổi thành buildViewModel(plans, rows, taglines). Mỗi plan
+    trong view-model sẽ có tagline (gói nào không có câu thì là null) thay cho
+    highlights. Hàm vẫn thuần vì nhận dữ liệu qua tham số, không import trực
+    tiếp. main.js truyền TAGLINES vào.
+  - js/render.js: trong header gói, thay <ul class="tags"> bằng <p 
+    class="tagline">.
+  - css/styles.css: xoá .tags và .tag, thêm .tagline (chữ màu muted, cỡ
+    0.875rem, căn giữa).
+  - Test (viết trước, TDD): sửa test header gói để kiểm tra tagline thay cho
+    highlights, và thêm test cho trường hợp gói không có câu thì tagline: null.
+
+  2. Pill "Best" chuyển lên góc trên-phải ô
+  - Desktop: td có position: relative. Pill dùng position: absolute; top: 3px; 
+    right: 4px, thu nhỏ cỡ chữ để nằm gọn trong khoảng padding 14px phía trên ô.
+    Nhờ vậy giá trị không bị đẩy đi, chiều cao hàng giữ nguyên, và không bị
+    xuống dòng ở màn 768px.
+  - Mobile: pill nằm cùng dòng, bên trái giá trị (BEST ✓ $10,000). Để làm được,
+    tôi đưa pill lên đầu trong DOM của ô. Trên desktop pill dùng vị trí tuyệt
+    đối nên thứ tự DOM không ảnh hưởng.
+  - Kiểm tra bằng số đo: ở 1280px và 768px, trong mọi hàng, mép trên của giá trị
+    ở 3 cột phải bằng nhau, và pill không được chồng lên chữ. Kèm theo chụp màn
+    hình desktop và mobile.
+
+  Tài liệu: cập nhật spec (§4.4, §6, §7.2) cho khớp. Commit: 2 commit riêng, mỗi
+  thay đổi một commit.
+
+  Bạn đồng ý với design này không? Khi bạn đồng ý tôi mới bắt đầu sửa.
+
+❯ Đồng ý                                                                        
+
+⏺ Tôi bắt đầu với thay đổi 1: câu mô tả. Theo TDD, tôi sửa test trước:
+
+⏺ Update(tests/viewModel.test.js)
+  ⎿  Added 2 lines, removed 2 lines
+       1  import assert from "node:assert/strict";
+       2  import { test } from "node:test";
+       3 -import { PLANS } from "../js/data.js";                         
+       3 +import { PLANS, TAGLINES } from "../js/data.js";               
+       4  import { ROWS } from "../js/rows.js";
+       5  import { buildViewModel } from "../js/viewModel.js";
+       6  
+       7 -const vm = buildViewModel(PLANS, ROWS);                        
+       7 +const vm = buildViewModel(PLANS, ROWS, TAGLINES);              
+       8  const allRows = vm.groups.flatMap((group) => group.rows);
+       9  const findRow = (id) => allRows.find((row) => row.id === id);
+      10  
+
+⏺ Update(tests/viewModel.test.js)
+  ⎿  Added 9 lines, removed 4 lines
+      61    assert.ok(otherSubtexts.every((subtext) => subtext === null))
+          ;
+      62  });
+      63  
+      64 -test("plan headers carry name, tier, highlights and the recomme
+         -nded flag", () => {                                            
+      64 +test("plan headers carry name, tier, tagline and the recommende
+         +d flag", () => {                                               
+      65    assert.deepEqual(vm.plans, [
+      66 -    { name: "Bronze", tier: "bronze", isRecommended: false, hig
+         -hlights: ["Basic coverage", "No dental or maternity"] },       
+      67 -    { name: "Silver", tier: "silver", isRecommended: false, hig
+         -hlights: ["Includes dental", "Lower copay", "Higher limits"] },
+      68 -    { name: "Gold", tier: "gold", isRecommended: true, highligh
+         -ts: ["Full coverage", "No copay", "No waiting period", "Unlimit
+         -ed visits"] },                                                 
+      66 +    { name: "Bronze", tier: "bronze", isRecommended: false, tag
+         +line: "Essential cover at the lowest monthly price." },        
+      67 +    { name: "Silver", tier: "silver", isRecommended: false, tag
+         +line: "Adds dental and halves your copay, at half the price of 
+         +Gold." },                                                      
+      68 +    { name: "Gold", tier: "gold", isRecommended: true, tagline:
+         + "Complete cover with no copay, no waiting and unlimited visits
+         +." },                                                          
+      69    ]);
+      70  });
+      71  
+      72 +test("a plan without a tagline gets tagline null", () => {     
+      73 +  const plans = buildViewModel(PLANS, ROWS, {}).plans;         
+      74 +  assert.ok(plans.every((plan) => plan.tagline === null));     
+      75 +});                                                            
+      76 +                                                               
+      77  test("recommendation names Gold and the formula", () => {
+      78    assert.deepEqual(vm.recommendation, {
+      79      planName: "Gold",
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Update(js/data.js)
+  ⎿  Added 7 lines
+      47      highlights: ["Full coverage", "No copay", "No waiting perio
+          d", "Unlimited visits"],
+      48    },
+      49  ];
+      50 +                                                               
+      51 +/** One-sentence summary of each plan's strongest point, shown 
+         +in the plan header. Keyed by plan name. */                     
+      52 +export const TAGLINES = {                                      
+      53 +  Bronze: "Essential cover at the lowest monthly price.",      
+      54 +  Silver: "Adds dental and halves your copay, at half the price
+         + of Gold.",                                                    
+      55 +  Gold: "Complete cover with no copay, no waiting and unlimited
+         + visits.",                                                     
+      56 +};                                                             
+
+⏺ Update(js/viewModel.js)
+  ⎿  Added 2 lines, removed 2 lines
+      20    });
+      21  }
+      22  
+      23 -export function buildViewModel(plans, rows) {                  
+      23 +export function buildViewModel(plans, rows, taglines = {}) {   
+      24    const recommended = pickRecommended(plans);
+      25    const groupTitles = [...new Set(rows.map((row) => row.group))
+          ];
+      26  
+     ...
+      29        name: plan.name,
+      30        tier: plan.name.toLowerCase(),
+      31        isRecommended: plan === recommended,
+      32 -      highlights: plan.highlights,                             
+      32 +      tagline: taglines[plan.name] ?? null,                    
+      33      })),
+      34      groups: groupTitles.map((title) => ({
+      35        title,
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Update(js/render.js)
+  ⎿  Added 1 line, removed 5 lines
+      28    return el("div", { className: `plan-head tier-${plan.tier}` }
+          , [
+      29      plan.isRecommended && el("span", { className: "badge", text
+          : "★ Recommended" }),
+      30      el(nameTag, { className: "plan-name", text: plan.name }),
+      31 -    el(                                                        
+      32 -      "ul",                                                    
+      33 -      { className: "tags", "aria-label": `${plan.name} highligh
+         -ts` },                                                         
+      34 -      plan.highlights.map((highlight) => el("li", { className: 
+         -"tag", text: highlight })),                                    
+      35 -    ),                                                         
+      31 +    plan.tagline && el("p", { className: "tagline", text: plan.
+         +tagline }),                                                    
+      32    ]);
+      33  }
+      34  
+
+⏺ Update(js/main.js)  ⎿  Added 2 lines, removed 2 lines
+      1 -import { PLANS } from "./data.js";                              
+      1 +import { PLANS, TAGLINES } from "./data.js";                    
+      2  import { renderCards, renderNotes, renderTable } from "./render.
+         js";
+      3  import { ROWS } from "./rows.js";
+      4  import { buildViewModel } from "./viewModel.js";
+      5  
+      6 -const vm = buildViewModel(PLANS, ROWS);                         
+      6 +const vm = buildViewModel(PLANS, ROWS, TAGLINES);               
+      7  document.getElementById("app").append(renderTable(vm), renderCar
+         ds(vm), renderNotes(vm));
+
+⏺ Update(css/styles.css)
+  ⎿  Added 5 lines, removed 15 lines
+      103    letter-spacing: 0.02em;
+      104  }
+      105  
+      106 -.tags {                                                       
+      107 -  display: flex;                                              
+      108 -  flex-wrap: wrap;                                            
+      109 -  justify-content: center;                                    
+      110 -  gap: 6px;                                                   
+      106 +.tagline {                                                    
+      107 +  max-width: 24ch;                                            
+      108    margin: 0;
+      112 -  padding: 0;                                                 
+      113 -  list-style: none;                                           
+      114 -}                                                             
+      115 -                                                              
+      116 -.tag {                                                        
+      117 -  padding: 2px 8px;                                           
+      118 -  border: 1px solid var(--border);                            
+      119 -  border-radius: 999px;                                       
+      120 -  background: var(--bg);                                      
+      109    color: var(--muted);
+      122 -  font-size: 0.75rem;                                         
+      110 +  font-size: 0.875rem;                                        
+      111 +  line-height: 1.4;                                           
+      112 +  text-align: center;                                         
+      113  }
+      114  
+      115  /* ---------- Row labels and cell content (both views) -------
+           --- */
+
+⏺ Lỗi 404 chỉ là do trình duyệt tự gọi favicon.ico (trang chưa có file này),
+  không ảnh hưởng gì nên bỏ qua. Giờ tôi cập nhật spec cho phần câu mô tả.
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 7 lines, removed 1 line
+      37  
+      38  ## 3. Data
+      39  
+      40 -`js/data.js` exports the challenge JSON **verbatim** as `PLANS`
+         -, plus `CURRENCY = "USD"`.                                     
+      40 +`js/data.js` exports the challenge JSON **verbatim** as `PLANS`
+         +, plus `CURRENCY = "USD"` and `TAGLINES`: a one-sentence summar
+         +y of each plan's strongest point, keyed by plan name. The tagli
+         +nes replace the `highlights` tags in the plan header and restat
+         +e their content:                                               
+      41  
+      42 +| Plan | Tagline |                                             
+      43 +|---|---|                                                      
+      44 +| Bronze | Essential cover at the lowest monthly price. |      
+      45 +| Silver | Adds dental and halves your copay, at half the price
+         + of Gold. |                                                    
+      46 +| Gold | Complete cover with no copay, no waiting and unlimited
+         + visits. |                                                     
+      47 +                                                               
+      48  Semantics:
+      49  
+      50  - `-1` means **unlimited**. It is compared as `Infinity` and di
+          splayed as `Unlimited`.
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 2 lines, removed 2 lines
+      107  
+      108  `getValue` must use optional chaining (e.g. `plan.benefits.out
+           patient?.visits_per_year ?? null`), so that when a whole benef
+           it is `null`, every row that depends on it returns `null` and 
+           renders as `✗ Not included` instead of throwing.
+      109  
+      110 -### 4.4 View-model shape (`buildViewModel`)                   
+      110 +### 4.4 View-model shape (`buildViewModel(plans, rows, tagline
+          +s)`)                                                          
+      111  
+      112  ```js
+      113  {
+      114    plans: [
+      115 -    { name: "Bronze", tier: "bronze", isRecommended: false, hi
+          -ghlights: ["Basic coverage", "No dental or maternity"] },     
+      115 +    { name: "Bronze", tier: "bronze", isRecommended: false, ta
+          +gline: "Essential cover at the lowest monthly price." }, // ta
+          +gline: null if missing                                        
+      116      // ...
+      117    ],
+      118    groups: [
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 1 line, removed 1 line
+      206  - A thin tier-colored stripe on top.
+      207  - Plan name.
+      208  - `★ Recommended` badge (recommended plan only).
+      209 -- `highlights` as small tags.                                 
+      209 +- The plan's tagline (§3) as one short muted sentence.        
+      210  
+      211  ### 7.3 Desktop table (≥ 768px)
+      212  
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Update(README.md)
+  ⎿  Added 1 line, removed 1 line
+      27  ```
+      28  index.html          page shell
+      29  css/styles.css      design tokens, desktop table, mobile cards 
+          (breakpoint 767px)
+      30 -js/data.js          plan data (verbatim from the challenge), cu
+         -rrency                                                         
+      30 +js/data.js          plan data (verbatim from the challenge), cu
+         +rrency, plan taglines                                          
+      31  js/format.js        money / count / percent / days formatting
+      32  js/compare.js       best value per row, coverage per dollar, re
+          commended plan
+      33  js/rows.js          one config entry per comparison row
+
+⏺ Update(README.md)
+  ⎿  Added 1 line
+      59  
+      60  - Amounts are in USD. The currency is one constant in `js/data.
+          js`.
+      61  - `-1` means unlimited. `null` means the benefit is not include
+          d.
+      62 +- Each plan header shows one tagline (`TAGLINES` in `js/data.js
+         +`) instead of the `highlights` tags. The tagline restates the h
+         +ighlights as a single sentence about the plan's strongest point
+         +.                                                              
+      63  - Best value: lowest wins for premium, copay, and waiting perio
+          d. Highest wins for every limit and count, and unlimited beats 
+          any number. A benefit that is not included never wins. Ties hig
+          hlight every tied plan. If all plans are equal, nothing is high
+          lighted.
+      64  
+      65  ## Deploy (GitHub Pages)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Xong thay đổi 1, 35/35 test pass và đã commit. Giờ chuyển sang thay đổi 2
+  (pill "Best") — trước tiên tôi đo độ lệch hiện tại làm số liệu đối chiếu, đóng
+  vai bước "test fail" trong TDD.
+
+⏺ Update(js/render.js)
+  ⎿  Added 2 lines, removed 1 line
+      39    ];
+      40  }
+      41  
+      42 +// The pill comes first: inline before the value on mobile, pin
+         +ned to the cell corner on desktop.                             
+      43  function cellContent(cell) {
+      44    return [
+      45 +    cell.isBest && bestPill(),                                 
+      46      el("span", { className: "value" }, [icon(cell.included), ce
+          ll.text]),
+      47      cell.subtext && el("span", { className: "subtext", text: ce
+          ll.subtext }),
+      46 -    cell.isBest && bestPill(),                                 
+      48    ];
+      49  }
+      50  
+
+⏺ Update(css/styles.css)
+  ⎿  Added 1 line, removed 1 line
+      179  
+      180  .compare-table th,
+      181  .compare-table td {
+      182 -  padding: 14px 16px;                                         
+      182 +  padding: 16px;                                              
+      183    border-bottom: 1px solid var(--border);
+      184  }
+      185  
+
+⏺ Update(css/styles.css)
+  ⎿  Added 11 lines, removed 4 lines
+      196    text-align: left;
+      197  }
+      198  
+      199 -.compare-table td { text-align: center; }                     
+      199 +.compare-table td {                                           
+      200 +  position: relative;                                         
+      201 +  text-align: center;                                         
+      202 +}                                                             
+      203  
+      204 +/* Pinned inside the cell's top padding so values stay aligned
+          + across columns. */                                           
+      205  .compare-table td .best-pill {
+      202 -  display: block;                                             
+      203 -  width: max-content;                                         
+      204 -  margin: 4px auto 0;                                         
+      206 +  position: absolute;                                         
+      207 +  top: 2px;                                                   
+      208 +  right: 4px;                                                 
+      209 +  padding: 0 6px;                                             
+      210 +  font-size: 0.625rem;                                        
+      211 +  line-height: 1.2;                                           
+      212  }
+      213  
+      214  .compare-table .group-row th {
+
+⏺ Update(css/styles.css)
+  ⎿  Added 4 lines, removed 1 line
+      279  
+      280  .card-group dd.is-best { padding-right: 8px; }
+      281  
+      282 -.card-group dd .best-pill { margin-top: 4px; }                
+      282 +.card-group dd .best-pill {                                   
+      283 +  margin-right: 6px;                                          
+      284 +  vertical-align: middle;                                     
+      285 +}                                                             
+      286  
+      287  .card-group:last-child dl > :nth-last-child(-n + 2) { border-b
+           ottom: 0; }
+      288  
+⏺ Kết quả kiểm tra ở cả 1280px và 768px đều tốt: 0 hàng bị lệch, không còn pill
+  chồng chữ, các cột đã thẳng hàng. Tiếp theo tôi sẽ kiểm tra bản mobile.
+
+⏺ Bản mobile đã đạt yêu cầu: 11/11 pill cùng dòng, đúng vị trí bên trái giá trị,
+  không cuộn ngang. Giờ tôi reset viewport, cập nhật spec cho phần pill và
+  commit thay đổi.
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 1 line
+      214  - Plan columns are center-aligned.
+      215  - Group title rows (Cost / Coverage / Extra benefits / Value) 
+           are full-width rows with a light background.
+      216  - The recommended column has a primary-colored border and a sl
+           ightly stronger background.
+      217 +- The "Best" pill is pinned to the top-right corner of the cel
+          +l, inside its top padding, so values stay on the same line in 
+          +every column and row heights don't change.                    
+      218  
+      219  ### 7.4 Mobile cards (< 768px)
+      220  
+
+⏺ Update(docs/superpowers/specs/2026-09-11-insurance-plan-comparison-design.md)
+  ⎿  Added 1 line, removed 1 line
+      220  
+      221  - One card per plan, in `PLANS` order.
+      222  - Each card: plan header, then the groups, each row laid out a
+           s `label …… value`.
+      223 -- Best pills and ✓/✗ icons are kept. The recommended card gets
+          - the primary border and badge.                                
+      223 +- ✓/✗ icons are kept. The "Best" pill sits inline, to the left
+          + of the value. The recommended card gets the primary border an
+          +d badge.                                                      
+      224  
+      225  ### 7.5 Tokens (CSS custom properties on `:root`)
+      226  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Tôi phát hiện commit 52260b1 add AI Challenge 01 documentation xen giữa nhưng
+  không phải do tôi tạo, có vẻ bạn đã tự commit trong lúc tôi làm việc. Để chắc
+  chắn, tôi sẽ kiểm tra lại trạng thái repo.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Tôi đã làm xong cả hai thay đổi. 35/35 test pass và đã kiểm tra trên trình
+  duyệt ở 1280px, 768px và 375px.
+
+  1. Câu mô tả thay cho các tag (commit 6722e02)
+  - Mỗi header gói giờ chỉ còn một câu ngắn thay cho các tag:
+    - Bronze: "Essential cover at the lowest monthly price."
+    - Silver: "Adds dental and halves your copay, at half the price of Gold."
+    - Gold: "Complete cover with no copay, no waiting and unlimited visits."
+  - Ba câu nằm trong TAGLINES ở data.js (js/data.js). Dữ liệu gói của đề bài giữ
+    nguyên.
+  - Tôi thêm một test kiểm tra rằng gói nào không có câu mô tả thì header không
+    hiện gì.
+  - README có thêm một dòng giải thích rằng câu mô tả đã thay cho các tag
+    highlights, để người chấm không nghĩ là thiếu dữ liệu.
+
+  2. Pill "Best" lên góc trên-phải ô (commit dc27c0c)
+  - Trên desktop, pill nằm gọn trong khoảng trống phía trên ô. Tôi đo trước và
+    sau khi sửa: trước là 11/11 hàng lệch khoảng 11px, sau là 0 hàng lệch và 0
+    pill chồng lên chữ, ở cả 1280px và 768px.
+  - Trên mobile, pill nằm cùng dòng, bên trái giá trị, ví dụ BEST $150/mo.
+  - Mỗi hàng trong bảng cao thêm 4px, vì tôi tăng khoảng đệm trên/dưới của mọi ô
+    từ 14px lên 16px để pill có chỗ nằm.
+
+  Hai điều cần bạn để ý:
+  - Commit 52260b1 của bạn, ngoài thư mục challenge, còn đưa cả
+    .claude/launch.json vào repo. Đây là file cấu hình server preview ở máy
+    local. Nó không ảnh hưởng đến trang deploy, vì workflow chỉ publish
+    index.html, css/ và js/. Nếu không muốn đẩy file này lên GitHub thì bạn gỡ
+    nó khỏi git.
+  - Console báo lỗi 404 cho /favicon.ico, vì trang chưa có icon. Lỗi này không
+    ảnh hưởng gì đến trang. Nếu muốn hết lỗi thì chỉ cần thêm một dòng <link 
+    rel="icon"> vào index.html.
+
+  ---
+
+  Câu hỏi hoàn tất nhánh lần trước vẫn còn chờ. challenge01 tách ra từ master
+  (commit 742525a), đúng không?
+
+  1. Merge back to master locally
+  2. Push and create a Pull Request
+  3. Keep the branch as-is (I'll handle it later)
+
+  Which option?
+
+❯ Đây là repo tôi mới tạo: https://github.com/vuminhluan/ai-challenge01.git     
+                                                                                
+  Hãy giúp setup ở local và push lên giúp tôi.                                  
+                                                                                
+  Lưu ý là merge vào master với 1 commit thôi nhé.                              
+
+⏺ Bạn đã cho phép push, nên tôi sẽ làm các bước sau: kiểm tra repo remote, gộp
+  challenge01 vào master thành 1 commit (squash), chạy lại test, rồi push
+  master. Đầu tiên tôi kiểm tra trạng thái repo remote và xem máy có gh CLI
+  không:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Repo remote đang trống nên push sẽ không xung đột, và gh đã đăng nhập tài
+  khoản vuminhluan. Tôi sẽ điền URL GitHub Pages
+  https://vuminhluan.github.io/ai-challenge01/ vào README trước khi gộp commit.
+
+⏺ Update(README.md)
+  ⎿  Added 2 lines, removed 1 line
+      2  
+      3  A single page that compares the Bronze, Silver and Gold insuranc
+         e plans side by side. It highlights the best value in each row a
+         nd recommends the plan with the best value for money.
+      4  
+      5 -- **Live URL:** _add after the first GitHub Pages deploy_       
+      5 +- **Live URL:** https://vuminhluan.github.io/ai-challenge01/    
+      6 +- **Repository:** https://github.com/vuminhluan/ai-challenge01  
+      7  - **Challenge:** [`AI_Engineering_Challenges/AI_Challenge_01.md`
+         ](AI_Engineering_Challenges/AI_Challenge_01.md)
+      8  - **Design spec:** [`docs/superpowers/specs/2026-09-11-insurance
+         -plan-comparison-design.md`](docs/superpowers/specs/2026-09-11-i
+         nsurance-plan-comparison-design.md)
+      9  
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Đã merge xong vào master (commit 7e19d0e, 35/35 test pass). Trước khi push,
+  tôi cần kiểm tra repo public/private vì master còn giữ commit gốc chứa file
+  Logical_Questions/answer.md.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ User answered Claude's questions:
+  ⎿  · Repo ai-challenge01 là PUBLIC. Khi push, có đưa kèm commit 'answer 
+     logical questions' (Logical_Questions/answer.md) lên không? → Xóa giúp tôi 
+     folder /Logical_Questions sau đó merge/push 1 commit thôi.
+
+⏺ Tôi sẽ dựng lại master thành một commit gốc duy nhất chứa toàn bộ challenge,
+  loại bỏ Logical_Questions/; các nhánh logical-questions và challenge01 vẫn giữ
+  nguyên lịch sử nên không mất dữ liệu nào.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Lệnh git rm bị lỗi do file đang ở trạng thái staged trên nhánh orphan, khiến
+  commit tạo ra vẫn còn chứa Logical_Questions (chưa push gì cả). Giờ tôi sẽ xoá
+  thư mục đó và amend lại commit gốc để sửa.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Master giờ chỉ còn 1 commit, khác challenge01 mỗi việc đã xoá answer.md, 35/35
+  test pass, còn Logical Questions vẫn nguyên trên nhánh local
+  logical-questions. Giờ tôi sẽ thêm remote và push.
+
+  Pushed to master, ran 2 shell commands (ctrl+o to expand)
+
+⏺ Workflow dừng ở bước configure-pages do repo chưa bật GitHub Pages, đúng như
+  dự đoán. Các bước trước đó, bao gồm chạy test, đều đã pass.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Code đã lên GitHub nhưng trang chưa deploy được vì repo chưa bật GitHub Pages
+  (workflow dừng ở bước configure-pages). Tôi cần bạn đồng ý để bật Pages với
+  nguồn GitHub Actions trước khi tiếp tục.
+
+⏺ User answered Claude's questions:
+  ⎿  · Bật GitHub Pages cho repo ai-challenge01 thế nào? → Tôi bật qua gh CLI 
+     (Recommended)
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Trang live đã chạy đúng với 11 hàng, 3 card và Gold được recommend, nhưng tôi
+  phát hiện lỗi mới: chữ "$200,000/pregnancy" ở ô Maternity của Gold bị cắt do
+  cột quá hẹp, mà lần kiểm tra tràn ngang trước đó chưa phát hiện ra. Giờ tôi sẽ
+  đo cụ thể độ tràn chữ trong ô đó.
+
+⏺ Đã tìm ra nguyên nhân tràn ô ở viewport 817px: chuỗi $200,000/pregnancy không
+  có khoảng trắng nên không xuống dòng được. Tôi sẽ sửa thành $200,000 per 
+  pregnancy trong rows.js, cập nhật test và spec §6, rồi kiểm tra lại ở
+  768/817/1024/1280px; đồng thời cần bạn xác nhận cho phép force-push để amend
+  commit trước khi đưa lên GitHub.
+
+⏺ User answered Claude's questions:
+  ⎿  · Sửa lỗi tràn chữ bằng cách đổi thành "$200,000 per pregnancy" — và đưa 
+     lên GitHub thế nào? → Sửa + amend + force-push (Recommended)
+
+⏺ Update(tests/viewModel.test.js)
+  ⎿  Added 1 line, removed 1 line
+      20    ["inpatient_per_day",    ["$10,000", "$25,000", "$50,000"],  
+                                [false, false, true],  [true, true, true]
+          ],
+      21    ["inpatient_days",       ["60", "120", "Unlimited"],         
+                                [false, false, true],  [null, null, null]
+          ],
+      22    ["dental",               ["Not included", "$30,000/yr", "$100
+          ,000/yr"],            [false, false, true],  [false, true, true
+          ]],
+      23 -  ["maternity",            ["Not included", "Not included", "$2
+         -00,000/pregnancy"],   [false, false, true],  [false, false, tru
+         -e]],                                                           
+      23 +  ["maternity",            ["Not included", "Not included", "$2
+         +00,000 per pregnancy"], [false, false, true], [false, false, tr
+         +ue]],                                                          
+      24    ["coverage_per_dollar",  ["$222", "$321", "$595"],           
+                                [false, false, true],  [null, null, null]
+          ],
+      25  ];
+      26  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Update(js/rows.js)
+  ⎿  Added 1 line, removed 1 line
+      91      label: "Maternity",
+      92      getValue: (plan) => plan.benefits.maternity?.limit_per_preg
+          nancy ?? null,
+      93      direction: "higher",
+      94 -    format: (value) => `${formatMoney(value)}/pregnancy`,      
+      94 +    format: (value) => `${formatMoney(value)} per pregnancy`, /
+         +/ spaces let it wrap in narrow columns                         
+      95      isBenefit: true,
+      96    },
+      97    {
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Ở 768px và 817px không còn ô nào bị tràn nữa — ô Maternity xuống dòng gọn gàng
+  và các hàng vẫn cân đối. Giờ tôi sẽ kiểm tra tiếp ở 1024px, 1280px và mobile.
+
+⏺ Hàng Maternity lệch mép trên vì ô Gold xuống 2 dòng ở 1024px, nhưng tâm cả 3 ô
+  vẫn trùng nhau nên đây là hiện tượng bình thường, không phải lỗi. Mọi kiểm
+  tra đã đạt, giờ tôi amend commit trên master và force-push bằng
+  --force-with-lease để đảm bảo an toàn.
+
+  Pushed to master, ran 1 shell command (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Code đã lên GitHub và trang đang chạy. master chỉ có đúng 1 commit và không có
+  thư mục Logical_Questions/.
+
+  - Live URL: https://vuminhluan.github.io/ai-challenge01/
+  - Repo: https://github.com/vuminhluan/ai-challenge01
+
+  Tôi đã mở trang live và kiểm tra: đủ 11 hàng, 3 card, 3 câu mô tả, Gold được
+  Recommended. Trang chính trả về 200, còn file test và README trả về 404, nghĩa
+  là chỉ file của trang được publish. Test chạy trên GitHub Actions pass.
+
+  Những việc đã làm:
+  - Thêm remote origin và điền link repo cùng live URL vào README.
+  - Dựng lại master thành một commit duy nhất (b95935d) và xoá
+    Logical_Questions/ khỏi đó.
+  - Bật GitHub Pages bằng gh CLI theo cách bạn chọn. Lần deploy đầu thất bại vì
+    repo chưa bật Pages; sau khi bật và chạy lại thì thành công.
+
+  Sửa thêm một lỗi phát hiện sau khi deploy:
+  - Ở màn rộng khoảng 768–900px, chữ $200,000/pregnancy trong cột Gold bị cắt.
+    Chuỗi này không có khoảng trắng nên không xuống dòng được.
+  - Tôi đổi thành $200,000 per pregnancy để chữ xuống dòng khi cột hẹp. Đã đo ở
+    768, 817, 1024, 1280px và mobile: không còn ô nào bị cắt.
+  - Ở 768–1024px ô này hiện thành 2 dòng, nhưng vẫn cân giữa hàng với hai cột
+    bên cạnh.
+  - Để giữ đúng 1 commit, tôi amend commit rồi force-push theo cách bạn đã đồng
+    ý, và đã xác nhận trên trang live.
+
+  Ở máy local:
+  - master đã khớp với GitHub.
+  - challenge01 giữ lịch sử từng bước nhưng chưa có bản sửa per pregnancy. Bản
+    sửa chỉ nằm trên master.
+  - logical-questions vẫn giữ bài Logical Questions.
+  - Hai nhánh này chưa push lên GitHub.
+
+  GitHub báo các action trong workflow đang dùng Node 20, bản đã bị deprecate,
+  và đang được ép chạy trên Node 24. Deploy vẫn chạy bình thường nên hiện chưa
+  cần sửa gì.
+
+⏺ Remote Control not started here · another Claude Code on this machine 
+  (started 4h ago) already has Remote Control for this conversation, so 
+  this terminal can't see your sessions on other machines and they can't
+  reach it · run /remote-control to move it to this terminal
